@@ -15,6 +15,7 @@ package org.eclipse.smarthome.storage.mapdb.internal;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 
@@ -24,6 +25,10 @@ import org.eclipse.smarthome.core.items.ManagedItemProvider.PersistedItem;
 import org.eclipse.smarthome.core.items.ManagedItemProvider.PersistedItemInstanceCreator;
 import org.eclipse.smarthome.core.storage.DeletableStorage;
 import org.eclipse.smarthome.core.storage.Storage;
+import org.eclipse.smarthome.storage.mapdb.internal.migration.MigrationException;
+import org.eclipse.smarthome.storage.mapdb.internal.migration.MigrationHandler;
+import org.eclipse.smarthome.storage.mapdb.internal.migration.RuleFromEshToOhMigrationHandler;
+import org.eclipse.smarthome.storage.mapdb.internal.migration.RuleMigrationHandler;
 import org.mapdb.DB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,6 +55,8 @@ public class MapDbStorage<T> implements DeletableStorage<T> {
 
     private final Logger logger = LoggerFactory.getLogger(MapDbStorage.class);
 
+    private final Map<String, MigrationHandler> migrationHandlers;
+
     private final String name;
     private final DB db;
     private final @Nullable ClassLoader classLoader;
@@ -71,6 +78,20 @@ public class MapDbStorage<T> implements DeletableStorage<T> {
         this.map = db.createTreeMap(name).makeOrGet();
         this.mapper = new GsonBuilder().registerTypeAdapterFactory(new PropertiesTypeAdapterFactory())
                 .registerTypeAdapter(PersistedItem.class, new PersistedItemInstanceCreator()).create();
+
+        // Create the migration helpers.
+        final Map<String, MigrationHandler> tmpMigrationHandlers = new HashMap<>();
+        addMigrationHandler(tmpMigrationHandlers, new RuleMigrationHandler(mapper));
+        addMigrationHandler(tmpMigrationHandlers, new RuleFromEshToOhMigrationHandler());
+        this.migrationHandlers = Collections.unmodifiableMap(tmpMigrationHandlers);
+    }
+
+    private static void addMigrationHandler(final Map<String, MigrationHandler> migrationHandlers,
+            final MigrationHandler migrationHandler) {
+        if (migrationHandlers.put(migrationHandler.getTypeNameOld(), migrationHandler) != null) {
+            throw new IllegalStateException(
+                    String.format("The type \"%s\" is used multiple times.", migrationHandler.getTypeNameOld()));
+        }
     }
 
     @Override
@@ -164,6 +185,24 @@ public class MapDbStorage<T> implements DeletableStorage<T> {
         String[] concatValue = json.split(TYPE_SEPARATOR, 2);
         String valueTypeName = concatValue[0];
         String valueAsString = concatValue[1];
+
+        // Backward compatibility
+        final Map<String, MigrationHandler> migrationHandlers = new HashMap<>(this.migrationHandlers);
+        for (;;) {
+            logger.debug("Check for migration handler for type \"{}\" (#migrationHandlers: {})", valueTypeName,
+                    migrationHandlers.size());
+            final MigrationHandler migrationHandler = migrationHandlers.remove(valueTypeName);
+            if (migrationHandler == null) {
+                logger.debug("No migration handler for type \"{}\" found.", valueTypeName);
+                break;
+            }
+            try {
+                valueAsString = migrationHandler.migrate(valueAsString);
+                valueTypeName = migrationHandler.getTypeNameNew();
+            } catch (final MigrationException ex) {
+                logger.warn("Migration from type '{}' to type '{}' failed, continue with unmigrated data.", ex);
+            }
+        }
 
         @Nullable
         T value = null;
