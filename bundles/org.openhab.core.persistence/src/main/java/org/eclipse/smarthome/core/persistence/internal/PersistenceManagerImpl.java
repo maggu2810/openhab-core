@@ -22,8 +22,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.smarthome.core.caller.Caller;
+import org.eclipse.smarthome.core.caller.ExecutionConstraints;
 import org.eclipse.smarthome.core.common.SafeCaller;
 import org.eclipse.smarthome.core.items.GenericItem;
 import org.eclipse.smarthome.core.items.GroupItem;
@@ -63,6 +67,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Kai Kreuzer - Initial contribution
  * @author Markus Rathgeb - Separation of persistence core and model, drop Quartz usage.
+ * @author Markus Rathgeb - migrate from safe caller to caller
  */
 @Component(immediate = true, service = PersistenceManager.class)
 @NonNullByDefault
@@ -73,7 +78,7 @@ public class PersistenceManagerImpl implements ItemRegistryChangeListener, Persi
     // the scheduler used for timer events
     private final CronScheduler scheduler;
     private final ItemRegistry itemRegistry;
-    private final SafeCaller safeCaller;
+    private final Caller caller;
     private volatile boolean started = false;
 
     final Map<String, PersistenceService> persistenceServices = new HashMap<>();
@@ -82,10 +87,10 @@ public class PersistenceManagerImpl implements ItemRegistryChangeListener, Persi
 
     @Activate
     public PersistenceManagerImpl(final @Reference CronScheduler scheduler, final @Reference ItemRegistry itemRegistry,
-            final @Reference SafeCaller safeCaller) {
+            final @Reference Caller caller) {
         this.scheduler = scheduler;
         this.itemRegistry = itemRegistry;
-        this.safeCaller = safeCaller;
+        this.caller = caller;
     }
 
     @Activate
@@ -252,7 +257,6 @@ public class PersistenceManagerImpl implements ItemRegistryChangeListener, Persi
      *
      * @param item the item to restore the state for
      */
-    @SuppressWarnings("null")
     private void initialize(Item item) {
         // get the last persisted state from the persistence service if no state is yet set
         if (item.getState().equals(UnDefType.NULL) && item instanceof GenericItem) {
@@ -266,15 +270,18 @@ public class PersistenceManagerImpl implements ItemRegistryChangeListener, Persi
                             if (service instanceof QueryablePersistenceService) {
                                 QueryablePersistenceService queryService = (QueryablePersistenceService) service;
                                 FilterCriteria filter = new FilterCriteria().setItemName(item.getName()).setPageSize(1);
-                                Iterable<HistoricItem> result = safeCaller
-                                        .create(queryService, QueryablePersistenceService.class).onTimeout(() -> {
-                                            logger.warn("Querying persistence service '{}' takes more than {}ms.",
-                                                    queryService.getId(), SafeCaller.DEFAULT_TIMEOUT);
-                                        }).onException(e -> {
-                                            logger.error(
-                                                    "Exception occurred while querying persistence service '{}': {}",
-                                                    queryService.getId(), e.getMessage(), e);
-                                        }).build().query(filter);
+                                final AtomicReference<@Nullable Iterable<HistoricItem>> resultContainer = new AtomicReference<>();
+                                caller.execSync(() -> {
+                                    resultContainer.set(queryService.query(filter));
+                                }, new ExecutionConstraints(SafeCaller.DEFAULT_TIMEOUT, () -> {
+                                    logger.warn("Querying persistence service '{}' takes more than {}ms.",
+                                            queryService.getId(), SafeCaller.DEFAULT_TIMEOUT);
+                                })).exceptionally(ex -> {
+                                    logger.error("Exception occurred while querying persistence service '{}': {}",
+                                            queryService.getId(), ex.getMessage(), ex);
+                                    return Caller.VOID;
+                                });
+                                final Iterable<HistoricItem> result = resultContainer.get();
                                 if (result != null) {
                                     Iterator<HistoricItem> it = result.iterator();
                                     if (it.hasNext()) {
