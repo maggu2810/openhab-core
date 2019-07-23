@@ -14,7 +14,8 @@ package org.eclipse.smarthome.core.thing.internal.profiles;
 
 import java.util.function.Function;
 
-import org.eclipse.smarthome.core.common.SafeCaller;
+import org.eclipse.smarthome.core.caller.Caller;
+import org.eclipse.smarthome.core.caller.ExecutionConstraints;
 import org.eclipse.smarthome.core.events.EventPublisher;
 import org.eclipse.smarthome.core.items.Item;
 import org.eclipse.smarthome.core.items.ItemStateConverter;
@@ -35,23 +36,23 @@ import org.slf4j.LoggerFactory;
  * {@link ProfileCallback} implementation.
  *
  * @author Simon Kaufmann - Initial contribution
+ * @author Markus Rathgeb - migrate from safe caller to caller
  */
 public class ProfileCallbackImpl implements ProfileCallback {
 
     private final Logger logger = LoggerFactory.getLogger(ProfileCallbackImpl.class);
 
     private final EventPublisher eventPublisher;
+    private final Caller caller;
     private final ItemChannelLink link;
     private final Function<ThingUID, Thing> thingProvider;
     private final Function<String, Item> itemProvider;
-    private final SafeCaller safeCaller;
     private final ItemStateConverter itemStateConverter;
 
-    public ProfileCallbackImpl(EventPublisher eventPublisher, SafeCaller safeCaller,
-            ItemStateConverter itemStateConverter, ItemChannelLink link, Function<ThingUID, Thing> thingProvider,
-            Function<String, Item> itemProvider) {
+    public ProfileCallbackImpl(EventPublisher eventPublisher, Caller caller, ItemStateConverter itemStateConverter,
+            ItemChannelLink link, Function<ThingUID, Thing> thingProvider, Function<String, Item> itemProvider) {
         this.eventPublisher = eventPublisher;
-        this.safeCaller = safeCaller;
+        this.caller = caller;
         this.itemStateConverter = itemStateConverter;
         this.link = link;
         this.thingProvider = thingProvider;
@@ -67,11 +68,16 @@ public class ProfileCallbackImpl implements ProfileCallback {
                 if (ThingHandlerHelper.isHandlerInitialized(thing)) {
                     logger.debug("Delegating command '{}' for item '{}' to handler for channel '{}'", command,
                             link.getItemName(), link.getLinkedUID());
-                    safeCaller.create(handler, ThingHandler.class)
-                            .withTimeout(CommunicationManager.THINGHANDLER_EVENT_TIMEOUT).onTimeout(() -> {
-                                logger.warn("Handler for thing '{}' takes more than {}ms for handling a command",
-                                        handler.getThing().getUID(), CommunicationManager.THINGHANDLER_EVENT_TIMEOUT);
-                            }).build().handleCommand(link.getLinkedUID(), command);
+                    caller.execSync(() -> {
+                        handler.handleCommand(link.getLinkedUID(), command);
+                        ;
+                    }, new ExecutionConstraints(CommunicationManager.THINGHANDLER_EVENT_TIMEOUT, () -> {
+                        logger.warn("Handler for thing '{}' takes more than {}ms for handling a command",
+                                handler.getThing().getUID(), CommunicationManager.THINGHANDLER_EVENT_TIMEOUT);
+                    })).exceptionally(ex -> {
+                        logger.warn("Handler for thing '{}' failed on handling a command", handler.getThing().getUID());
+                        return Caller.VOID;
+                    });
                 } else {
                     logger.debug("Not delegating command '{}' for item '{}' to handler for channel '{}', "
                             + "because handler is not initialized (thing must be in status UNKNOWN, ONLINE or OFFLINE but was {}).",
@@ -99,11 +105,15 @@ public class ProfileCallbackImpl implements ProfileCallback {
                 if (ThingHandlerHelper.isHandlerInitialized(thing)) {
                     logger.debug("Delegating update '{}' for item '{}' to handler for channel '{}'", state,
                             link.getItemName(), link.getLinkedUID());
-                    safeCaller.create(handler, ThingHandler.class)
-                            .withTimeout(CommunicationManager.THINGHANDLER_EVENT_TIMEOUT).onTimeout(() -> {
-                                logger.warn("Handler for thing '{}' takes more than {}ms for handling an update",
-                                        handler.getThing().getUID(), CommunicationManager.THINGHANDLER_EVENT_TIMEOUT);
-                            }).build().handleUpdate(link.getLinkedUID(), state);
+                    caller.execSync(() -> {
+                        handler.handleUpdate(link.getLinkedUID(), state);
+                    }, new ExecutionConstraints(CommunicationManager.THINGHANDLER_EVENT_TIMEOUT, () -> {
+                        logger.warn("Handler for thing '{}' takes more than {}ms for handling an update",
+                                handler.getThing().getUID(), CommunicationManager.THINGHANDLER_EVENT_TIMEOUT);
+                    })).exceptionally(ex -> {
+                        logger.warn("Handler for thing '{}' failed on handling an update", handler.getThing().getUID());
+                        return Caller.VOID;
+                    });
                 } else {
                     logger.debug("Not delegating update '{}' for item '{}' to handler for channel '{}', "
                             + "because handler is not initialized (thing must be in status UNKNOWN, ONLINE or OFFLINE but was {}).",

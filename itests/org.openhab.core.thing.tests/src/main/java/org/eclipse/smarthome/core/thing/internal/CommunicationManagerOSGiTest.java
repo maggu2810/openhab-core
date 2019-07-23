@@ -24,7 +24,7 @@ import java.util.stream.Stream;
 
 import javax.measure.quantity.Temperature;
 
-import org.eclipse.smarthome.core.common.SafeCaller;
+import org.eclipse.smarthome.core.caller.Caller;
 import org.eclipse.smarthome.core.common.registry.Provider;
 import org.eclipse.smarthome.core.common.registry.ProviderChangeListener;
 import org.eclipse.smarthome.core.events.EventPublisher;
@@ -162,22 +162,21 @@ public class CommunicationManagerOSGiTest extends JavaOSGiTest {
     @Mock
     private ChannelTypeRegistry channelTypeRegistry;
 
-    private SafeCaller safeCaller;
+    private Caller caller;
 
     @Before
     public void setup() {
         initMocks(this);
 
-        safeCaller = getService(SafeCaller.class);
-        assertNotNull(safeCaller);
+        caller = getService(Caller.class);
+        assertNotNull(caller);
 
         SystemProfileFactory profileFactory = getService(ProfileTypeProvider.class, SystemProfileFactory.class);
         assertNotNull(profileFactory);
 
-        manager = new CommunicationManager();
+        manager = new CommunicationManager(caller);
         manager.setEventPublisher(eventPublisher);
         manager.setDefaultProfileFactory(profileFactory);
-        manager.setSafeCaller(safeCaller);
 
         doAnswer(invocation -> {
             switch (((Channel) invocation.getArguments()[0]).getKind()) {

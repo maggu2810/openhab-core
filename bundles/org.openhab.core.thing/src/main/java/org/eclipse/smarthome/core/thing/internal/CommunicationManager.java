@@ -30,8 +30,9 @@ import javax.measure.Quantity;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.smarthome.core.caller.Caller;
+import org.eclipse.smarthome.core.caller.ExecutionConstraints;
 import org.eclipse.smarthome.core.common.AbstractUID;
-import org.eclipse.smarthome.core.common.SafeCaller;
 import org.eclipse.smarthome.core.common.registry.RegistryChangeListener;
 import org.eclipse.smarthome.core.events.Event;
 import org.eclipse.smarthome.core.events.EventFilter;
@@ -73,6 +74,7 @@ import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.State;
 import org.eclipse.smarthome.core.types.Type;
 import org.eclipse.smarthome.core.types.util.UnitUtils;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
@@ -86,6 +88,7 @@ import org.slf4j.LoggerFactory;
  * It mainly mediates commands, state updates and triggers from ThingHandlers to the framework and vice versa.
  *
  * @author Simon Kaufmann - Initial contribution factored out of ThingManger
+ * @author Markus Rathgeb - migrate from safe caller to caller
  */
 @NonNullByDefault
 @Component(service = { EventSubscriber.class, CommunicationManager.class }, immediate = true)
@@ -104,10 +107,11 @@ public class CommunicationManager implements EventSubscriber, RegistryChangeList
     private @NonNullByDefault({}) ThingRegistry thingRegistry;
     private @NonNullByDefault({}) ItemRegistry itemRegistry;
     private @NonNullByDefault({}) EventPublisher eventPublisher;
-    private @NonNullByDefault({}) SafeCaller safeCaller;
     private @NonNullByDefault({}) AutoUpdateManager autoUpdateManager;
     private @NonNullByDefault({}) ItemStateConverter itemStateConverter;
     private @NonNullByDefault({}) ChannelTypeRegistry channelTypeRegistry;
+
+    private final Caller caller;
 
     private final Set<ItemFactory> itemFactories = new CopyOnWriteArraySet<>();
 
@@ -121,6 +125,11 @@ public class CommunicationManager implements EventSubscriber, RegistryChangeList
 
     private final Map<String, @Nullable List<Class<? extends Command>>> acceptedCommandTypeMap = new ConcurrentHashMap<>();
     private final Map<String, @Nullable List<Class<? extends State>>> acceptedStateTypeMap = new ConcurrentHashMap<>();
+
+    @Activate
+    public CommunicationManager(final @Reference Caller caller) {
+        this.caller = caller;
+    }
 
     @Override
     public Set<String> getSubscribedEventTypes() {
@@ -166,8 +175,8 @@ public class CommunicationManager implements EventSubscriber, RegistryChangeList
     }
 
     private ProfileCallback createCallback(ItemChannelLink link) {
-        return new ProfileCallbackImpl(eventPublisher, safeCaller, itemStateConverter, link,
-                thingUID -> getThing(thingUID), itemName -> getItem(itemName));
+        return new ProfileCallbackImpl(eventPublisher, caller, itemStateConverter, link, thingUID -> getThing(thingUID),
+                itemName -> getItem(itemName));
     }
 
     private @Nullable ProfileTypeUID determineProfileTypeUID(ItemChannelLink link, Item item, @Nullable Thing thing) {
@@ -264,11 +273,18 @@ public class CommunicationManager implements EventSubscriber, RegistryChangeList
         handleEvent(itemName, command, commandEvent.getSource(), s -> acceptedCommandTypeMap.get(s),
                 (profile, thing, convertedCommand) -> {
                     if (profile instanceof StateProfile) {
-                        safeCaller.create(((StateProfile) profile), StateProfile.class) //
-                                .withAsync() //
-                                .withIdentifier(thing) //
-                                .withTimeout(THINGHANDLER_EVENT_TIMEOUT) //
-                                .build().onCommandFromItem(convertedCommand);
+                        final StateProfile stateProfile = (StateProfile) profile;
+                        caller.execAsync(() -> {
+                            stateProfile.onCommandFromItem(convertedCommand);
+                        }, new ExecutionConstraints(THINGHANDLER_EVENT_TIMEOUT, () -> {
+                            logger.warn(
+                                    "Handle \"on command from item\" (profile: {}, converted command: {}) exceed runtime limit.",
+                                    profile.getClass(), convertedCommand);
+                        })).exceptionally(ex -> {
+                            logger.warn("Handle \"on command from item\" (profile: {}, converted command: {}) failed.",
+                                    profile.getClass(), convertedCommand, ex);
+                            return Caller.VOID;
+                        });
                     }
                 });
     }
@@ -278,11 +294,17 @@ public class CommunicationManager implements EventSubscriber, RegistryChangeList
         final State newState = updateEvent.getItemState();
         handleEvent(itemName, newState, updateEvent.getSource(), s -> acceptedStateTypeMap.get(s),
                 (profile, thing, convertedState) -> {
-                    safeCaller.create(profile, Profile.class) //
-                            .withAsync() //
-                            .withIdentifier(thing) //
-                            .withTimeout(THINGHANDLER_EVENT_TIMEOUT) //
-                            .build().onStateUpdateFromItem(convertedState);
+                    caller.execAsync(() -> {
+                        profile.onStateUpdateFromItem(convertedState);
+                    }, new ExecutionConstraints(THINGHANDLER_EVENT_TIMEOUT, () -> {
+                        logger.warn(
+                                "Handle \"on state update from item\" (profile: {}, converted state: {}) exceed runtime limit.",
+                                profile.getClass(), convertedState);
+                    })).exceptionally(ex -> {
+                        logger.warn("Handle \"on state update from item\" (profile: {}, converted state: {}) failed.",
+                                profile.getClass(), convertedState, ex);
+                        return Caller.VOID;
+                    });
                 });
     }
 
@@ -582,15 +604,6 @@ public class CommunicationManager implements EventSubscriber, RegistryChangeList
 
     protected void unsetDefaultProfileFactory(SystemProfileFactory defaultProfileFactory) {
         this.defaultProfileFactory = null;
-    }
-
-    @Reference
-    protected void setSafeCaller(SafeCaller safeCaller) {
-        this.safeCaller = safeCaller;
-    }
-
-    protected void unsetSafeCaller(SafeCaller safeCaller) {
-        this.safeCaller = null;
     }
 
     @Reference
