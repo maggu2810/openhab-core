@@ -46,12 +46,18 @@ import org.eclipse.smarthome.core.thing.type.ChannelType;
 import org.eclipse.smarthome.core.thing.type.ChannelTypeRegistry;
 import org.eclipse.smarthome.core.thing.type.ChannelTypeUID;
 import org.eclipse.smarthome.io.rest.LocaleService;
+import org.eclipse.smarthome.io.rest.RESTConstants;
 import org.eclipse.smarthome.io.rest.RESTResource;
 import org.eclipse.smarthome.io.rest.Stream2JSONInputStream;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
+import org.osgi.service.jaxrs.whiteboard.JaxrsWhiteboardConstants;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JSONRequired;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsApplicationSelect;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsName;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -64,11 +70,16 @@ import io.swagger.annotations.ApiResponses;
  *
  * @author Chris Jackson - Initial contribution
  * @author Franck Dechavanne - Added DTOs to ApiResponses
+ * @author Markus Rathgeb - Migrated to JAX-RS Whiteboard Specification
  */
-@Path(ChannelTypeResource.PATH_CHANNEL_TYPES)
+@Component
+@JaxrsResource
+@JaxrsName(ChannelTypeResource.PATH_CHANNEL_TYPES)
+@JaxrsApplicationSelect("(" + JaxrsWhiteboardConstants.JAX_RS_NAME + "=" + RESTConstants.JAX_RS_NAME + ")")
+@JSONRequired
+@Path("/" + ChannelTypeResource.PATH_CHANNEL_TYPES)
 @RolesAllowed({ Role.ADMIN })
 @Api(value = ChannelTypeResource.PATH_CHANNEL_TYPES)
-@Component
 public class ChannelTypeResource implements RESTResource {
 
     /** The URI path to this resource */

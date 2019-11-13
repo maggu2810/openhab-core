@@ -28,8 +28,8 @@ import org.eclipse.smarthome.core.transform.TransformationException;
 import org.eclipse.smarthome.core.transform.TransformationHelper;
 import org.eclipse.smarthome.core.types.StateDescription;
 import org.eclipse.smarthome.core.types.StateDescriptionFragmentBuilder;
-import org.eclipse.smarthome.io.rest.core.internal.RESTCoreActivator;
 import org.eclipse.smarthome.io.rest.core.internal.item.ItemResource;
+import org.osgi.framework.FrameworkUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -121,7 +121,8 @@ public class EnrichedItemDTOMapper {
             String pattern = stateDescription.getPattern();
             if (pattern != null) {
                 try {
-                    return TransformationHelper.transform(RESTCoreActivator.getBundleContext(), pattern, state);
+                    return TransformationHelper.transform(
+                            FrameworkUtil.getBundle(EnrichedItemDTOMapper.class).getBundleContext(), pattern, state);
                 } catch (NoClassDefFoundError ex) {
                     // TransformationHelper is optional dependency, so ignore if class not found
                     // return state as it is without transformation

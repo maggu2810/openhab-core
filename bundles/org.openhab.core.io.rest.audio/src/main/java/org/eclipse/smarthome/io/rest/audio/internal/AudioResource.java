@@ -35,11 +35,17 @@ import org.eclipse.smarthome.core.audio.AudioSource;
 import org.eclipse.smarthome.core.auth.Role;
 import org.eclipse.smarthome.io.rest.JSONResponse;
 import org.eclipse.smarthome.io.rest.LocaleService;
+import org.eclipse.smarthome.io.rest.RESTConstants;
 import org.eclipse.smarthome.io.rest.RESTResource;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
+import org.osgi.service.jaxrs.whiteboard.JaxrsWhiteboardConstants;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JSONRequired;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsApplicationSelect;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsName;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -51,9 +57,14 @@ import io.swagger.annotations.ApiResponses;
  * This class acts as a REST resource for audio features.
  *
  * @author Laurent Garnier - Initial contribution
+ * @author Markus Rathgeb - Migrated to JAX-RS Whiteboard Specification
  */
 @Component
-@Path(AudioResource.PATH_SITEMAPS)
+@JaxrsResource
+@JaxrsName(AudioResource.PATH_SITEMAPS)
+@JaxrsApplicationSelect("(" + JaxrsWhiteboardConstants.JAX_RS_NAME + "=" + RESTConstants.JAX_RS_NAME + ")")
+@JSONRequired
+@Path("/" + AudioResource.PATH_SITEMAPS)
 @RolesAllowed({ Role.USER, Role.ADMIN })
 @Api(value = AudioResource.PATH_SITEMAPS)
 @NonNullByDefault

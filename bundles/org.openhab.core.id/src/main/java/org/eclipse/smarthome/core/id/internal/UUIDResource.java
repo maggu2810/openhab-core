@@ -21,8 +21,13 @@ import javax.ws.rs.core.Response;
 
 import org.eclipse.smarthome.core.auth.Role;
 import org.eclipse.smarthome.core.id.InstanceUUID;
+import org.eclipse.smarthome.io.rest.RESTConstants;
 import org.eclipse.smarthome.io.rest.RESTResource;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.jaxrs.whiteboard.JaxrsWhiteboardConstants;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsApplicationSelect;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsName;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -33,9 +38,13 @@ import io.swagger.annotations.ApiResponses;
  * This class acts as a REST resource for accessing the UUID of the instance
  *
  * @author Kai Kreuzer - Initial contribution
+ * @author Markus Rathgeb - Migrated to JAX-RS Whiteboard Specification
  */
 @Component
-@Path(UUIDResource.PATH_UUID)
+@JaxrsResource
+@JaxrsName(UUIDResource.PATH_UUID)
+@JaxrsApplicationSelect("(" + JaxrsWhiteboardConstants.JAX_RS_NAME + "=" + RESTConstants.JAX_RS_NAME + ")")
+@Path("/" + UUIDResource.PATH_UUID)
 @Api(value = UUIDResource.PATH_UUID)
 @RolesAllowed({ Role.ADMIN })
 public class UUIDResource implements RESTResource {

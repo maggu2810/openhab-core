@@ -23,13 +23,16 @@ import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MultivaluedMap;
-import javax.ws.rs.ext.Provider;
 
 import org.apache.commons.lang.StringUtils;
+import org.eclipse.smarthome.io.rest.RESTConstants;
 import org.eclipse.smarthome.io.rest.internal.Constants;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
+import org.osgi.service.jaxrs.whiteboard.JaxrsWhiteboardConstants;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsApplicationSelect;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsExtension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,10 +45,12 @@ import org.slf4j.LoggerFactory;
  * This implementation does not allow specific request/response headers nor cookies (allowCredentials).
  *
  * @author Antoine Besnard - Initial contribution
+ * @author Markus Rathgeb - Migrated to JAX-RS Whiteboard Specification
  */
-@Provider
-@Component(immediate = true, property = {
+@Component(property = {
         "service.pid=org.eclipse.smarthome.cors" }, configurationPid = "org.eclipse.smarthome.cors", configurationPolicy = ConfigurationPolicy.REQUIRE)
+@JaxrsExtension
+@JaxrsApplicationSelect("(" + JaxrsWhiteboardConstants.JAX_RS_NAME + "=" + RESTConstants.JAX_RS_NAME + ")")
 public class CorsFilter implements ContainerResponseFilter {
 
     static final String HTTP_HEAD_METHOD = "HEAD";

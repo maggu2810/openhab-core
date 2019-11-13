@@ -20,7 +20,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.events.Event;
 import org.eclipse.smarthome.core.events.EventFilter;
 import org.eclipse.smarthome.core.events.EventSubscriber;
-import org.eclipse.smarthome.io.rest.sse.SseResource;
+import org.eclipse.smarthome.io.rest.sse.internal.SsePublisher;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -37,11 +37,11 @@ public class SseEventSubscriber implements EventSubscriber {
 
     private final Set<String> subscribedEventTypes = Collections.singleton(EventSubscriber.ALL_EVENT_TYPES);
 
-    private final SseResource sseResource;
+    private final SsePublisher ssePublisher;
 
     @Activate
-    public SseEventSubscriber(final @Reference SseResource sseResource) {
-        this.sseResource = sseResource;
+    public SseEventSubscriber(final @Reference SsePublisher ssePublisher) {
+        this.ssePublisher = ssePublisher;
     }
 
     @Override
@@ -56,6 +56,6 @@ public class SseEventSubscriber implements EventSubscriber {
 
     @Override
     public void receive(Event event) {
-        sseResource.broadcastEvent(event);
+        ssePublisher.broadcast(event);
     }
 }

@@ -50,12 +50,18 @@ import org.eclipse.smarthome.core.thing.type.ChannelTypeRegistry;
 import org.eclipse.smarthome.core.thing.type.ThingType;
 import org.eclipse.smarthome.core.thing.type.ThingTypeRegistry;
 import org.eclipse.smarthome.io.rest.LocaleService;
+import org.eclipse.smarthome.io.rest.RESTConstants;
 import org.eclipse.smarthome.io.rest.RESTResource;
 import org.eclipse.smarthome.io.rest.Stream2JSONInputStream;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
+import org.osgi.service.jaxrs.whiteboard.JaxrsWhiteboardConstants;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JSONRequired;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsApplicationSelect;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsName;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,10 +82,15 @@ import io.swagger.annotations.ApiResponses;
  * @author Yordan Zhelev - Added Swagger annotations
  * @author Miki Jankov - Introducing StrippedThingTypeDTO
  * @author Franck Dechavanne - Added DTOs to ApiResponses
+ * @author Markus Rathgeb - Migrated to JAX-RS Whiteboard Specification
  */
-@Path(ThingTypeResource.PATH_THINGS_TYPES)
-@Api(value = ThingTypeResource.PATH_THINGS_TYPES)
 @Component
+@JaxrsResource
+@JaxrsName(ThingTypeResource.PATH_THINGS_TYPES)
+@JaxrsApplicationSelect("(" + JaxrsWhiteboardConstants.JAX_RS_NAME + "=" + RESTConstants.JAX_RS_NAME + ")")
+@JSONRequired
+@Path("/" + ThingTypeResource.PATH_THINGS_TYPES)
+@Api(value = ThingTypeResource.PATH_THINGS_TYPES)
 public class ThingTypeResource implements RESTResource {
 
     /** The URI path to this resource */

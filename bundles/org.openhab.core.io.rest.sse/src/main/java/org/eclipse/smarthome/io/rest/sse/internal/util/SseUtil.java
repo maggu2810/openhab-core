@@ -17,40 +17,47 @@ import java.util.List;
 import java.util.StringTokenizer;
 
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.sse.OutboundSseEvent;
 
-import org.apache.commons.lang.StringUtils;
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.events.Event;
-import org.eclipse.smarthome.io.rest.sse.beans.EventBean;
-import org.glassfish.jersey.media.sse.OutboundEvent;
+import org.eclipse.smarthome.io.rest.sse.internal.dto.EventDTO;
 
 /**
  * Utility class containing helper methods for the SSE implementation.
  *
  * @author Ivan Iliev - Initial contribution
  * @author Dennis Nobel - Changed EventBean
+ * @author Markus Rathgeb - Don't depend on specific application but use APIs if possible
  */
+@NonNullByDefault
 public class SseUtil {
     static final String TOPIC_VALIDATE_PATTERN = "(\\w*\\*?\\/?,?:?-?\\s*)*";
 
+    public static EventDTO buildDTO(final Event event) {
+        EventDTO dto = new EventDTO();
+        dto.topic = event.getTopic();
+        dto.type = event.getType();
+        dto.payload = event.getPayload();
+        return dto;
+    }
+
     /**
-     * Creates a new {@link OutboundEvent} object containing an {@link EventBean} created for the given Eclipse
+     * Creates a new {@link OutboundSseEvent} object containing an {@link EventDTO} created for the given Eclipse
      * SmartHome {@link Event}.
      *
-     * @param event the event
-     *
+     * @param eventBuilder the builder that should be used
+     * @param event the event data transfer object
      * @return a new OutboundEvent
      */
-    public static OutboundEvent buildEvent(Event event) {
-        EventBean eventBean = new EventBean();
-        eventBean.topic = event.getTopic();
-        eventBean.type = event.getType();
-        eventBean.payload = event.getPayload();
+    public static OutboundSseEvent buildEvent(OutboundSseEvent.Builder eventBuilder, EventDTO event) {
+        final OutboundSseEvent sseEvent = eventBuilder.name("message") //
+                .mediaType(MediaType.APPLICATION_JSON_TYPE) //
+                .data(event) //
+                .build();
 
-        OutboundEvent.Builder eventBuilder = new OutboundEvent.Builder();
-        OutboundEvent outboundEvent = eventBuilder.name("message").mediaType(MediaType.APPLICATION_JSON_TYPE)
-                .data(eventBean).build();
-
-        return outboundEvent;
+        return sseEvent;
     }
 
     /**
@@ -60,8 +67,8 @@ public class SseUtil {
      * @return true if the given input filter is empty or a valid topic filter string
      *
      */
-    public static boolean isValidTopicFilter(String topicFilter) {
-        return StringUtils.isEmpty(topicFilter) || topicFilter.matches(TOPIC_VALIDATE_PATTERN);
+    public static boolean isValidTopicFilter(@Nullable String topicFilter) {
+        return topicFilter == null || topicFilter.isEmpty() || topicFilter.matches(TOPIC_VALIDATE_PATTERN);
     }
 
     /**
@@ -71,10 +78,10 @@ public class SseUtil {
      * @param topicFilter
      * @return
      */
-    public static List<String> convertToRegex(String topicFilter) {
+    public static List<String> convertToRegex(@Nullable String topicFilter) {
         List<String> filters = new ArrayList<>();
 
-        if (StringUtils.isEmpty(topicFilter)) {
+        if (topicFilter == null || topicFilter.isEmpty()) {
             filters.add(".*");
         } else {
             StringTokenizer tokenizer = new StringTokenizer(topicFilter, ",");

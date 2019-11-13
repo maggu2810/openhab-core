@@ -26,6 +26,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 
 import org.eclipse.smarthome.io.rest.LocaleService;
+import org.eclipse.smarthome.io.rest.RESTConstants;
 import org.eclipse.smarthome.io.rest.RESTResource;
 import org.eclipse.smarthome.ui.icon.IconProvider;
 import org.eclipse.smarthome.ui.icon.IconSet;
@@ -33,21 +34,31 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
+import org.osgi.service.jaxrs.whiteboard.JaxrsWhiteboardConstants;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JSONRequired;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsApplicationSelect;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsName;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 
 /**
  * This is a REST resource that provides information about available icon sets.
  *
  * @author Kai Kreuzer - Initial contribution
+ * @author Markus Rathgeb - Migrated to JAX-RS Whiteboard Specification
  */
-@Path("iconsets")
 @Component
+@JaxrsResource
+@JaxrsName("iconsets")
+@JaxrsApplicationSelect("(" + JaxrsWhiteboardConstants.JAX_RS_NAME + "=" + RESTConstants.JAX_RS_NAME + ")")
+@JSONRequired
+@Path("/iconsets")
 public class IconSetResource implements RESTResource {
 
     private List<IconProvider> iconProviders = new ArrayList<>(5);
 
     private LocaleService localeService;
 
-    @Reference(cardinality=ReferenceCardinality.MULTIPLE, policy=ReferencePolicy.DYNAMIC)
+    @Reference(cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC)
     protected void addIconProvider(IconProvider iconProvider) {
         this.iconProviders.add(iconProvider);
     }
@@ -60,7 +71,7 @@ public class IconSetResource implements RESTResource {
     protected void setLocaleService(LocaleService localeService) {
         this.localeService = localeService;
     }
-    
+
     protected void unsetLocaleService(LocaleService localeService) {
         this.localeService = null;
     }

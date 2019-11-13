@@ -46,12 +46,18 @@ import org.eclipse.smarthome.core.extension.ExtensionService;
 import org.eclipse.smarthome.core.extension.ExtensionType;
 import org.eclipse.smarthome.io.rest.JSONResponse;
 import org.eclipse.smarthome.io.rest.LocaleService;
+import org.eclipse.smarthome.io.rest.RESTConstants;
 import org.eclipse.smarthome.io.rest.RESTResource;
 import org.eclipse.smarthome.io.rest.Stream2JSONInputStream;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
+import org.osgi.service.jaxrs.whiteboard.JaxrsWhiteboardConstants;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JSONRequired;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsApplicationSelect;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsName;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,11 +72,16 @@ import io.swagger.annotations.ApiResponses;
  *
  * @author Kai Kreuzer - Initial contribution
  * @author Franck Dechavanne - Added DTOs to ApiResponses
+ * @author Markus Rathgeb - Migrated to JAX-RS Whiteboard Specification
  */
-@Path(ExtensionResource.PATH_EXTENSIONS)
+@Component
+@JaxrsResource
+@JaxrsName(ExtensionResource.PATH_EXTENSIONS)
+@JaxrsApplicationSelect("(" + JaxrsWhiteboardConstants.JAX_RS_NAME + "=" + RESTConstants.JAX_RS_NAME + ")")
+@JSONRequired
+@Path("/" + ExtensionResource.PATH_EXTENSIONS)
 @RolesAllowed({ Role.ADMIN })
 @Api(value = ExtensionResource.PATH_EXTENSIONS)
-@Component
 public class ExtensionResource implements RESTResource {
 
     private static final String THREAD_POOL_NAME = "extensionService";

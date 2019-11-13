@@ -31,6 +31,7 @@ import javax.ws.rs.core.UriInfo;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.io.rest.LocaleService;
+import org.eclipse.smarthome.io.rest.RESTConstants;
 import org.eclipse.smarthome.io.rest.RESTResource;
 import org.openhab.core.automation.dto.ActionTypeDTOMapper;
 import org.openhab.core.automation.dto.ConditionTypeDTOMapper;
@@ -48,6 +49,11 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
+import org.osgi.service.jaxrs.whiteboard.JaxrsWhiteboardConstants;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JSONRequired;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsApplicationSelect;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsName;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -61,11 +67,16 @@ import io.swagger.annotations.ApiResponses;
  * @author Kai Kreuzer - Initial contribution
  * @author Markus Rathgeb - Use DTOs
  * @author Ana Dimova - extends Module type DTOs with composites
+ * @author Markus Rathgeb - Migrated to JAX-RS Whiteboard Specification
  */
-@Path("module-types")
+@Component
+@JaxrsResource
+@JaxrsName("module-types")
+@JaxrsApplicationSelect("(" + JaxrsWhiteboardConstants.JAX_RS_NAME + "=" + RESTConstants.JAX_RS_NAME + ")")
+@JSONRequired
+@Path("/module-types")
 @Api("module-types")
 @NonNullByDefault
-@Component
 public class ModuleTypeResource implements RESTResource {
 
     private @NonNullByDefault({}) ModuleTypeRegistry moduleTypeRegistry;

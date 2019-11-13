@@ -30,6 +30,7 @@ import javax.ws.rs.core.UriInfo;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.smarthome.io.rest.LocaleService;
+import org.eclipse.smarthome.io.rest.RESTConstants;
 import org.eclipse.smarthome.io.rest.RESTResource;
 import org.openhab.core.automation.dto.RuleTemplateDTO;
 import org.openhab.core.automation.dto.RuleTemplateDTOMapper;
@@ -40,6 +41,11 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
+import org.osgi.service.jaxrs.whiteboard.JaxrsWhiteboardConstants;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JSONRequired;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsApplicationSelect;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsName;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -51,11 +57,16 @@ import io.swagger.annotations.ApiResponses;
  * This class acts as a REST resource for templates and is registered with the Jersey servlet.
  *
  * @author Kai Kreuzer - Initial contribution
+ * @author Markus Rathgeb - Migrated to JAX-RS Whiteboard Specification
  */
-@Path("templates")
+@Component
+@JaxrsResource
+@JaxrsName("templates")
+@JaxrsApplicationSelect("(" + JaxrsWhiteboardConstants.JAX_RS_NAME + "=" + RESTConstants.JAX_RS_NAME + ")")
+@JSONRequired
+@Path("/templates")
 @Api("templates")
 @NonNullByDefault
-@Component
 public class TemplateResource implements RESTResource {
 
     private @NonNullByDefault({}) TemplateRegistry<@NonNull RuleTemplate> templateRegistry;

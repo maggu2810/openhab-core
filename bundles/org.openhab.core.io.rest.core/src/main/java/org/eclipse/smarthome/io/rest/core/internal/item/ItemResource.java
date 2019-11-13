@@ -71,6 +71,7 @@ import org.eclipse.smarthome.core.types.TypeParser;
 import org.eclipse.smarthome.io.rest.DTOMapper;
 import org.eclipse.smarthome.io.rest.JSONResponse;
 import org.eclipse.smarthome.io.rest.LocaleService;
+import org.eclipse.smarthome.io.rest.RESTConstants;
 import org.eclipse.smarthome.io.rest.RESTResource;
 import org.eclipse.smarthome.io.rest.Stream2JSONInputStream;
 import org.eclipse.smarthome.io.rest.core.item.EnrichedGroupItemDTO;
@@ -80,6 +81,11 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
+import org.osgi.service.jaxrs.whiteboard.JaxrsWhiteboardConstants;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JSONRequired;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsApplicationSelect;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsName;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -111,11 +117,16 @@ import io.swagger.annotations.ApiResponses;
  * @author Jörg Plewe - refactoring, error handling
  * @author Franck Dechavanne - Added DTOs to ApiResponses
  * @author Stefan Triller - Added bulk item add method
+ * @author Markus Rathgeb - Migrated to JAX-RS Whiteboard Specification
  */
-@NonNullByDefault
-@Path(ItemResource.PATH_ITEMS)
-@Api(value = ItemResource.PATH_ITEMS)
 @Component
+@JaxrsResource
+@JaxrsName(ItemResource.PATH_ITEMS)
+@JaxrsApplicationSelect("(" + JaxrsWhiteboardConstants.JAX_RS_NAME + "=" + RESTConstants.JAX_RS_NAME + ")")
+@JSONRequired
+@Path("/" + ItemResource.PATH_ITEMS)
+@Api(value = ItemResource.PATH_ITEMS)
+@NonNullByDefault
 public class ItemResource implements RESTResource {
 
     private final Logger logger = LoggerFactory.getLogger(ItemResource.class);

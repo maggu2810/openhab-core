@@ -40,6 +40,7 @@ import javax.ws.rs.core.UriInfo;
 import org.eclipse.smarthome.config.core.ConfigUtil;
 import org.eclipse.smarthome.config.core.Configuration;
 import org.eclipse.smarthome.io.rest.JSONResponse;
+import org.eclipse.smarthome.io.rest.RESTConstants;
 import org.eclipse.smarthome.io.rest.RESTResource;
 import org.openhab.core.automation.Action;
 import org.openhab.core.automation.Condition;
@@ -65,6 +66,11 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
+import org.osgi.service.jaxrs.whiteboard.JaxrsWhiteboardConstants;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JSONRequired;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsApplicationSelect;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsName;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,10 +86,15 @@ import io.swagger.annotations.ResponseHeader;
  *
  * @author Kai Kreuzer - Initial contribution
  * @author Markus Rathgeb - Use DTOs
+ * @author Markus Rathgeb - Migrated to JAX-RS Whiteboard Specification
  */
-@Path("rules")
-@Api("rules")
 @Component
+@JaxrsResource
+@JaxrsName("rules")
+@JaxrsApplicationSelect("(" + JaxrsWhiteboardConstants.JAX_RS_NAME + "=" + RESTConstants.JAX_RS_NAME + ")")
+@JSONRequired
+@Path("/rules")
+@Api("rules")
 public class RuleResource implements RESTResource {
 
     private final Logger logger = LoggerFactory.getLogger(RuleResource.class);

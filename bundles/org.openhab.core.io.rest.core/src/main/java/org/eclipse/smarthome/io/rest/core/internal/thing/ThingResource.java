@@ -90,6 +90,7 @@ import org.eclipse.smarthome.core.thing.type.ThingTypeRegistry;
 import org.eclipse.smarthome.core.thing.util.ThingHelper;
 import org.eclipse.smarthome.io.rest.JSONResponse;
 import org.eclipse.smarthome.io.rest.LocaleService;
+import org.eclipse.smarthome.io.rest.RESTConstants;
 import org.eclipse.smarthome.io.rest.RESTResource;
 import org.eclipse.smarthome.io.rest.Stream2JSONInputStream;
 import org.eclipse.smarthome.io.rest.core.thing.EnrichedThingDTO;
@@ -98,6 +99,11 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
+import org.osgi.service.jaxrs.whiteboard.JaxrsWhiteboardConstants;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JSONRequired;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsApplicationSelect;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsName;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -122,10 +128,15 @@ import io.swagger.annotations.ApiResponses;
  *         add editable flag to thing responses
  * @author Franck Dechavanne - Added DTOs to ApiResponses
  * @author Dimitar Ivanov - replaced Firmware UID with thing UID and firmware version
+ * @author Markus Rathgeb - Migrated to JAX-RS Whiteboard Specification
  */
-@Path(ThingResource.PATH_THINGS)
-@Api(value = ThingResource.PATH_THINGS)
 @Component
+@JaxrsResource
+@JaxrsName(ThingResource.PATH_THINGS)
+@JaxrsApplicationSelect("(" + JaxrsWhiteboardConstants.JAX_RS_NAME + "=" + RESTConstants.JAX_RS_NAME + ")")
+@JSONRequired
+@Path("/" + ThingResource.PATH_THINGS)
+@Api(value = ThingResource.PATH_THINGS)
 public class ThingResource implements RESTResource {
 
     private final Logger logger = LoggerFactory.getLogger(ThingResource.class);
@@ -919,7 +930,8 @@ public class ThingResource implements RESTResource {
                 && managedItemChannelLinkProvider != null && managedItemProvider != null && managedThingProvider != null
                 && thingRegistry != null && configStatusService != null && configDescRegistry != null
                 && thingTypeRegistry != null && channelTypeRegistry != null && firmwareUpdateService != null
-                && thingStatusInfoI18nLocalizationService != null && firmwareRegistry != null && localeService != null && thingManager != null;
+                && thingStatusInfoI18nLocalizationService != null && firmwareRegistry != null && localeService != null
+                && thingManager != null;
     }
 
 }
