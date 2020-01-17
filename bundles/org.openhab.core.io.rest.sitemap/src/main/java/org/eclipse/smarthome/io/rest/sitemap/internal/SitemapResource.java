@@ -514,8 +514,8 @@ public class SitemapResource
                         .substring(widget.eClass().getInstanceTypeName().lastIndexOf(".") + 1);
                 boolean isMapview = "mapview".equalsIgnoreCase(widgetTypeName);
                 Predicate<Item> itemFilter = (i -> i.getType().equals(CoreItemFactory.LOCATION));
-                bean.item = EnrichedItemDTOMapper.map(item, isMapview, itemFilter, UriBuilder.fromUri(uri).build(),
-                        locale);
+                bean.item = EnrichedItemDTOMapper.map(item, isMapview, itemFilter,
+                        UriBuilder.fromUri(uri).path("{itemName}"), locale);
                 bean.state = itemUIRegistry.getState(widget).toFullString();
                 // In case the widget state is identical to the item state, its value is set to null.
                 if (bean.state != null && bean.state.equals(bean.item.state)) {
