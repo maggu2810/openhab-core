@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.BiConsumer;
@@ -63,8 +64,8 @@ public abstract class AbstractRegistry<E extends Identifiable<K>, K, P extends P
 
     private final Logger logger = LoggerFactory.getLogger(AbstractRegistry.class);
 
-    private final Class<P> providerClazz;
-    private @Nullable ServiceTracker<P, P> providerTracker;
+    private final @Nullable Class<P> providerClazz;
+    private @NonNullByDefault({}) CompletableFuture<ServiceTracker<P, P>> providerTrackerFuture;
 
     private final ReentrantReadWriteLock elementLock = new ReentrantReadWriteLock();
     private final ReentrantReadWriteLock.ReadLock elementReadLock = elementLock.readLock();
@@ -86,28 +87,41 @@ public abstract class AbstractRegistry<E extends Identifiable<K>, K, P extends P
      * @param providerClazz the class of the providers (see e.g. {@link AbstractRegistry#addProvider(Provider)}), null
      *            if no providers should be tracked automatically after activation
      */
-    protected AbstractRegistry(final Class<P> providerClazz) {
+    protected AbstractRegistry(final @Nullable Class<P> providerClazz) {
         this.providerClazz = providerClazz;
     }
 
     protected void activate(final BundleContext context) {
+        final Class<P> providerClazz = this.providerClazz;
         if (providerClazz != null) {
             /*
              * The handlers for 'add' and 'remove' the services implementing the provider class (cardinality is
              * multiple) rely on an active component.
              * To grant that the add and remove functions are called only for an active component, we use a provider
              * tracker.
+             * Do not open the tracker in the activation method itself as this could lead to circular dependency errors.
              */
-            providerTracker = new ProviderTracker(context, providerClazz);
-            providerTracker.open();
+            providerTrackerFuture = CompletableFuture.supplyAsync(() -> {
+                final ServiceTracker<P, P> providerTracker = new ProviderTracker(context, providerClazz);
+                providerTracker.open();
+                return providerTracker;
+            });
         }
     }
 
     protected void deactivate() {
-        if (providerTracker != null) {
-            providerTracker.close();
-            providerTracker = null;
-        }
+        Optional.ofNullable(providerTrackerFuture).ifPresent(future -> {
+            try {
+                final ServiceTracker<P, P> providerTracker = future.join();
+                providerTracker.close();
+            } catch (final RuntimeException ex) {
+                logger.warn("Provider tracker handling failed (I am an instance of {}).", getClass(), ex);
+            }
+        });
+    }
+
+    public void waitForCompletedAsyncActivationTasks() {
+        Optional.ofNullable(providerTrackerFuture).ifPresent(CompletableFuture::join);
     }
 
     private final class ProviderTracker extends ServiceTracker<P, P> {
