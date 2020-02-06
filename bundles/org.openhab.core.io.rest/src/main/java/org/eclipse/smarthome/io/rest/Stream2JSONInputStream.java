@@ -12,8 +12,10 @@
  */
 package org.eclipse.smarthome.io.rest;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.stream.Stream;
 
@@ -53,7 +55,7 @@ public class Stream2JSONInputStream extends InputStream implements JSONInputStre
         }
 
         iterator = source.map(e -> gson.toJson(e)).iterator();
-        jsonElementStream = IOUtils.toInputStream("");
+        jsonElementStream = toInputStream("");
         firstIteratorElement = true;
     }
 
@@ -95,11 +97,15 @@ public class Stream2JSONInputStream extends InputStream implements JSONInputStre
         }
 
         IOUtils.closeQuietly(jsonElementStream);
-        jsonElementStream = IOUtils.toInputStream(prefix + entity + postfix);
+        jsonElementStream = toInputStream(prefix + entity + postfix);
     }
 
     private boolean finished() {
         return !firstIteratorElement && !iterator.hasNext();
+    }
+
+    private static InputStream toInputStream(String input) {
+        return new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
     }
 
 }
